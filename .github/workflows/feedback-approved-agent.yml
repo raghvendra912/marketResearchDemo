@@ -1,0 +1,143 @@
+name: Feedback Approved Agent Automation
+
+on:
+  repository_dispatch:
+    types: [feedback-approved]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Create Agent Task File
+        id: task
+        run: |
+          mkdir -p agent-tasks
+          FEEDBACK_ID="${{ github.event.client_payload.feedback.feedbackId }}"
+          TASK_FILE="agent-tasks/${FEEDBACK_ID}.md"
+          cat << 'EOF' > "$TASK_FILE"
+          # Approved Feedback Task
+
+          - Feedback ID: ${{ github.event.client_payload.feedback.feedbackId }}
+          - Page: ${{ github.event.client_payload.feedback.page }}
+          - Feature: ${{ github.event.client_payload.feedback.featureTitle }}
+          - Requested By: ${{ github.event.client_payload.feedback.requestedBy }}
+          - Approved By: ${{ github.event.client_payload.feedback.approvedBy }}
+          - Approval Comment: ${{ github.event.client_payload.feedback.approvalComment }}
+
+          ## Current Behavior
+          ${{ github.event.client_payload.feedback.currentBehavior }}
+
+          ## Expected Behavior
+          ${{ github.event.client_payload.feedback.expectedBehavior }}
+
+          ## Business Impact
+          ${{ github.event.client_payload.feedback.impact }}
+
+          ## Agent Instructions
+          Apply code changes in the repository to implement expected behavior.
+          Add/update tests where possible.
+          Keep changes scoped to the requested feature.
+          EOF
+          echo "task_file=$TASK_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Build Codex Prompt
+        run: |
+          cat << 'EOF' > codex-feedback-prompt.md
+          You are an automated coding agent working in CI.
+
+          Apply the approved feedback in this repository with a focused, minimal patch.
+          Requirements:
+          - Implement the requested behavior directly in code.
+          - Keep UX and existing architecture intact.
+          - Add/update tests if appropriate.
+          - Do not introduce unrelated refactors.
+
+          Approved feedback:
+          - Feedback ID: ${{ github.event.client_payload.feedback.feedbackId }}
+          - Page: ${{ github.event.client_payload.feedback.page }}
+          - Feature: ${{ github.event.client_payload.feedback.featureTitle }}
+          - Requested by: ${{ github.event.client_payload.feedback.requestedBy }}
+          - Approved by: ${{ github.event.client_payload.feedback.approvedBy }}
+          - Approval comment: ${{ github.event.client_payload.feedback.approvalComment }}
+
+          Current behavior:
+          ${{ github.event.client_payload.feedback.currentBehavior }}
+
+          Expected behavior:
+          ${{ github.event.client_payload.feedback.expectedBehavior }}
+
+          Business impact:
+          ${{ github.event.client_payload.feedback.impact }}
+
+          After editing files, ensure the project still builds.
+          EOF
+
+      - name: Run Codex Agent
+        if: ${{ secrets.OPENAI_API_KEY != '' }}
+        id: run_codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: codex-feedback-prompt.md
+          sandbox: workspace-write
+          model: gpt-5.4
+          effort: medium
+          codex-args: '["--full-auto"]'
+
+      - name: Optional Custom Agent Command
+        if: ${{ secrets.AGENT_CHANGE_COMMAND != '' }}
+        run: |
+          echo "Running custom agent command"
+          bash -lc "${{ secrets.AGENT_CHANGE_COMMAND }}"
+
+      - name: Check for file changes
+        id: changes
+        run: |
+          if git diff --quiet; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create Pull Request
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "chore(agent): apply approved feedback ${{ github.event.client_payload.feedback.feedbackId }}"
+          title: "Agent Update: ${{ github.event.client_payload.feedback.featureTitle }}"
+          body: |
+            Automated change request from approved feedback.
+
+            - Feedback ID: `${{ github.event.client_payload.feedback.feedbackId }}`
+            - Page: `${{ github.event.client_payload.feedback.page }}`
+            - Requested By: `${{ github.event.client_payload.feedback.requestedBy }}`
+            - Approved By: `${{ github.event.client_payload.feedback.approvedBy }}`
+
+            Expected behavior:
+            `${{ github.event.client_payload.feedback.expectedBehavior }}`
+
+            Approval context:
+            `${{ github.event.client_payload.feedback.approvalComment }}`
+          branch: "agent/feedback-${{ github.event.client_payload.feedback.feedbackId }}"
+          delete-branch: true
+          add-paths: |
+            .
+
+      - name: Trigger Vercel Deploy Hook (optional)
+        if: ${{ secrets.VERCEL_DEPLOY_HOOK_URL != '' && steps.changes.outputs.has_changes == 'true' }}
+        run: |
+          curl -X POST "${{ secrets.VERCEL_DEPLOY_HOOK_URL }}"
