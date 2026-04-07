@@ -119,7 +119,9 @@ const demoUsersSeed: Array<{ name: string; email: string; password: string; role
   { name: "Raghvendra", email: "raghvendra@vaultlocal.com", password: "Admin@123", role: "admin" },
   { name: "Amrit", email: "amrit@vaultlocal.com", password: "Pm@123", role: "pm" },
   { name: "Anubhav", email: "anubhav@vaultlocal.com", password: "Sales@123", role: "sales" },
+  { name: "Himanshu", email: "himanshu@vaultlocal.com", password: "himanshu@123", role: "sales" },
   { name: "Demo User", email: "demo@vaultlocal.com", password: "Demo@123", role: "sales" },
+  
 ];
 
 const dbDir = path.join(process.cwd(), "data");
