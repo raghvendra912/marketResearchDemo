@@ -25,12 +25,51 @@ type LocalQuestion = {
 
 type LocalProject = {
   id: string;
+  project_code: string | null;
   name: string;
+  survey_name: string | null;
   survey_id: string;
   platform: ProjectPlatform;
   source_url: string | null;
   status: "draft" | "published";
+  workflow_status: "live" | "pending" | "paused" | "ids_awaited";
+  project_type: string | null;
+  survey_category: string | null;
+  project_manager: string | null;
+  secondary_project_manager: string | null;
+  create_date: string | null;
+  end_date: string | null;
+  pre_screening: "on" | "off" | null;
+  ai_pre_screening_status: "on" | "off" | null;
+  number_of_questions: number | null;
+  client_name: string | null;
+  sales_person: string | null;
+  client_po_number: string | null;
+  variable: string | null;
+  quota: number | null;
+  country: string | null;
+  ir: number | null;
+  loi: number | null;
+  cpi: number | null;
+  segment: string | null;
+  survey_link: string | null;
+  supplier_name: string | null;
+  supplier_cpi: number | null;
+  rd_search: boolean;
+  rd_review: boolean;
+  rd_predupe: boolean;
+  rd_activity: boolean;
+  rd_email_verify: boolean;
+  speeder_term: "on" | "off";
+  geo_ip: "on" | "off";
+  duplicate_ip: "on" | "off";
+  pre_screening_captcha: "on" | "off";
+  survalidate: "on" | "off";
+  dfiq_portal: "on" | "off";
+  campaign_banner: "hide" | "show";
+  campaign_banner_status: string | null;
   created_at: string;
+  updated_at: string | null;
 };
 
 type LocalProjectLink = {
@@ -130,6 +169,57 @@ let volatileDb: LocalDb | null = null;
 
 const demoSurveyId = "11111111-1111-4111-8111-111111111111";
 
+function generateProjectCode() {
+  const stamp = new Date().toISOString().slice(2, 10).replace(/-/g, "");
+  const random = Math.floor(100 + Math.random() * 900);
+  return `QLB-${stamp}${random}`;
+}
+
+function normalizeLocalProject(project: LocalProject): LocalProject {
+  return {
+    ...project,
+    project_code: project.project_code ?? generateProjectCode(),
+    survey_name: project.survey_name ?? project.name,
+    workflow_status: project.workflow_status ?? "live",
+    project_type: project.project_type ?? "consumer",
+    survey_category: project.survey_category ?? "general",
+    project_manager: project.project_manager ?? "AR",
+    secondary_project_manager: project.secondary_project_manager ?? null,
+    create_date: project.create_date ?? project.created_at.slice(0, 10),
+    end_date: project.end_date ?? null,
+    pre_screening: project.pre_screening ?? "off",
+    ai_pre_screening_status: project.ai_pre_screening_status ?? "off",
+    number_of_questions: project.number_of_questions ?? null,
+    client_name: project.client_name ?? null,
+    sales_person: project.sales_person ?? null,
+    client_po_number: project.client_po_number ?? null,
+    variable: project.variable ?? null,
+    quota: typeof project.quota === "number" ? project.quota : null,
+    country: project.country ?? null,
+    ir: typeof project.ir === "number" ? project.ir : null,
+    loi: typeof project.loi === "number" ? project.loi : null,
+    cpi: typeof project.cpi === "number" ? project.cpi : null,
+    segment: project.segment ?? null,
+    survey_link: project.survey_link ?? null,
+    supplier_name: project.supplier_name ?? null,
+    supplier_cpi: typeof project.supplier_cpi === "number" ? project.supplier_cpi : null,
+    rd_search: Boolean(project.rd_search),
+    rd_review: Boolean(project.rd_review),
+    rd_predupe: Boolean(project.rd_predupe),
+    rd_activity: Boolean(project.rd_activity),
+    rd_email_verify: Boolean(project.rd_email_verify),
+    speeder_term: project.speeder_term ?? "off",
+    geo_ip: project.geo_ip ?? "off",
+    duplicate_ip: project.duplicate_ip ?? "off",
+    pre_screening_captcha: project.pre_screening_captcha ?? "off",
+    survalidate: project.survalidate ?? "off",
+    dfiq_portal: project.dfiq_portal ?? "off",
+    campaign_banner: project.campaign_banner ?? "hide",
+    campaign_banner_status: project.campaign_banner_status ?? "Complete, Terminate, Quota-Full",
+    updated_at: project.updated_at ?? null,
+  };
+}
+
 function getSeedUsers(createdAt: string): LocalUser[] {
   return demoUsersSeed.map((user) => ({
     id: randomUUID(),
@@ -194,12 +284,51 @@ function seedDb(): LocalDb {
     projects: [
       {
         id: projectId,
+        project_code: "QLB-00012026",
         name: "Demo GenPop - Cint",
+        survey_name: "Demo GenPop - Cint",
         survey_id: demoSurveyId,
         platform: "cint",
         source_url: null,
         status: "published",
+        workflow_status: "live",
+        project_type: "consumer",
+        survey_category: "genpop",
+        project_manager: "AR",
+        secondary_project_manager: null,
+        create_date: now.slice(0, 10),
+        end_date: null,
+        pre_screening: "off",
+        ai_pre_screening_status: "off",
+        number_of_questions: 4,
+        client_name: "IPS",
+        sales_person: "AR",
+        client_po_number: "25-034941-01-06",
+        variable: null,
+        quota: 999,
+        country: "US",
+        ir: 45,
+        loi: 10,
+        cpi: 7,
+        segment: null,
+        survey_link: null,
+        supplier_name: "Cint",
+        supplier_cpi: 7,
+        rd_search: false,
+        rd_review: false,
+        rd_predupe: false,
+        rd_activity: false,
+        rd_email_verify: false,
+        speeder_term: "off",
+        geo_ip: "off",
+        duplicate_ip: "off",
+        pre_screening_captcha: "off",
+        survalidate: "off",
+        dfiq_portal: "off",
+        campaign_banner: "hide",
+        campaign_banner_status: "Complete, Terminate, Quota-Full",
         created_at: now,
+        updated_at: now,
       },
     ],
     project_links: [
@@ -252,7 +381,7 @@ async function readDb(): Promise<LocalDb> {
     const db: LocalDb = {
       surveys: parsed.surveys ?? [],
       questions: parsed.questions ?? [],
-      projects: parsed.projects ?? [],
+      projects: (parsed.projects ?? []).map((project) => normalizeLocalProject(project as LocalProject)),
       project_links: parsed.project_links ?? [],
       responses: parsed.responses ?? [],
       answers: parsed.answers ?? [],
@@ -263,7 +392,11 @@ async function readDb(): Promise<LocalDb> {
     const needsMigration =
       !Array.isArray(parsed.feedback_items) ||
       !Array.isArray(parsed.users) ||
-      parsed.users.length === 0;
+      parsed.users.length === 0 ||
+      (parsed.projects ?? []).some((project) => {
+        const entry = project as Partial<LocalProject>;
+        return !entry.project_code || !entry.workflow_status;
+      });
     if (needsMigration) {
       await writeFile(dbPath, JSON.stringify(db, null, 2), "utf8");
     }
@@ -412,6 +545,20 @@ export async function getLocalProjects() {
     }));
 }
 
+export async function getLocalProjectById(id: string) {
+  const db = await readDb();
+  const project = db.projects.find((item) => item.id === id);
+  if (!project) {
+    return null;
+  }
+  return {
+    ...project,
+    project_links: db.project_links
+      .filter((link) => link.project_id === project.id)
+      .map((link) => ({ slug: link.slug, is_active: link.is_active })),
+  };
+}
+
 export async function slugExists(slug: string) {
   const db = await readDb();
   return db.project_links.some((item) => item.slug === slug);
@@ -423,6 +570,45 @@ export async function createLocalProject(input: {
   platform: ProjectPlatform;
   sourceUrl: string | null;
   slug: string;
+  status?: "draft" | "published";
+  projectCode?: string | null;
+  surveyName?: string | null;
+  workflowStatus?: "live" | "pending" | "paused" | "ids_awaited";
+  projectType?: string | null;
+  surveyCategory?: string | null;
+  projectManager?: string | null;
+  secondaryProjectManager?: string | null;
+  createDate?: string | null;
+  endDate?: string | null;
+  preScreening?: "on" | "off" | null;
+  aiPreScreeningStatus?: "on" | "off" | null;
+  numberOfQuestions?: number | null;
+  clientName?: string | null;
+  salesPerson?: string | null;
+  clientPoNumber?: string | null;
+  variable?: string | null;
+  quota?: number | null;
+  country?: string | null;
+  ir?: number | null;
+  loi?: number | null;
+  cpi?: number | null;
+  segment?: string | null;
+  surveyLink?: string | null;
+  supplierName?: string | null;
+  supplierCpi?: number | null;
+  rdSearch?: boolean;
+  rdReview?: boolean;
+  rdPredupe?: boolean;
+  rdActivity?: boolean;
+  rdEmailVerify?: boolean;
+  speederTerm?: "on" | "off";
+  geoIp?: "on" | "off";
+  duplicateIp?: "on" | "off";
+  preScreeningCaptcha?: "on" | "off";
+  survalidate?: "on" | "off";
+  dfiqPortal?: "on" | "off";
+  campaignBanner?: "hide" | "show";
+  campaignBannerStatus?: string | null;
 }) {
   const db = await readDb();
   const survey = db.surveys.find((item) => item.id === input.surveyId && item.is_published);
@@ -434,12 +620,51 @@ export async function createLocalProject(input: {
   const projectId = randomUUID();
   db.projects.unshift({
     id: projectId,
+    project_code: input.projectCode ?? generateProjectCode(),
     name: input.name,
+    survey_name: input.surveyName ?? input.name,
     survey_id: input.surveyId,
     platform: input.platform,
     source_url: input.sourceUrl,
-    status: "published",
+    status: input.status ?? "published",
+    workflow_status: input.workflowStatus ?? "live",
+    project_type: input.projectType ?? null,
+    survey_category: input.surveyCategory ?? null,
+    project_manager: input.projectManager ?? null,
+    secondary_project_manager: input.secondaryProjectManager ?? null,
+    create_date: input.createDate ?? now.slice(0, 10),
+    end_date: input.endDate ?? null,
+    pre_screening: input.preScreening ?? "off",
+    ai_pre_screening_status: input.aiPreScreeningStatus ?? "off",
+    number_of_questions: input.numberOfQuestions ?? null,
+    client_name: input.clientName ?? null,
+    sales_person: input.salesPerson ?? null,
+    client_po_number: input.clientPoNumber ?? null,
+    variable: input.variable ?? null,
+    quota: input.quota ?? null,
+    country: input.country ?? null,
+    ir: input.ir ?? null,
+    loi: input.loi ?? null,
+    cpi: input.cpi ?? null,
+    segment: input.segment ?? null,
+    survey_link: input.surveyLink ?? null,
+    supplier_name: input.supplierName ?? null,
+    supplier_cpi: input.supplierCpi ?? null,
+    rd_search: Boolean(input.rdSearch),
+    rd_review: Boolean(input.rdReview),
+    rd_predupe: Boolean(input.rdPredupe),
+    rd_activity: Boolean(input.rdActivity),
+    rd_email_verify: Boolean(input.rdEmailVerify),
+    speeder_term: input.speederTerm ?? "off",
+    geo_ip: input.geoIp ?? "off",
+    duplicate_ip: input.duplicateIp ?? "off",
+    pre_screening_captcha: input.preScreeningCaptcha ?? "off",
+    survalidate: input.survalidate ?? "off",
+    dfiq_portal: input.dfiqPortal ?? "off",
+    campaign_banner: input.campaignBanner ?? "hide",
+    campaign_banner_status: input.campaignBannerStatus ?? "Complete, Terminate, Quota-Full",
     created_at: now,
+    updated_at: now,
   });
   db.project_links.unshift({
     id: randomUUID(),
@@ -452,6 +677,189 @@ export async function createLocalProject(input: {
   return {
     project: db.projects[0],
   };
+}
+
+export async function updateLocalProject(input: {
+  id: string;
+  name?: string;
+  projectCode?: string | null;
+  surveyName?: string | null;
+  platform?: ProjectPlatform;
+  status?: "draft" | "published";
+  workflowStatus?: "live" | "pending" | "paused" | "ids_awaited";
+  sourceUrl?: string | null;
+  projectType?: string | null;
+  surveyCategory?: string | null;
+  projectManager?: string | null;
+  secondaryProjectManager?: string | null;
+  createDate?: string | null;
+  endDate?: string | null;
+  preScreening?: "on" | "off" | null;
+  aiPreScreeningStatus?: "on" | "off" | null;
+  numberOfQuestions?: number | null;
+  clientName?: string | null;
+  salesPerson?: string | null;
+  clientPoNumber?: string | null;
+  variable?: string | null;
+  quota?: number | null;
+  country?: string | null;
+  ir?: number | null;
+  loi?: number | null;
+  cpi?: number | null;
+  segment?: string | null;
+  surveyLink?: string | null;
+  supplierName?: string | null;
+  supplierCpi?: number | null;
+  rdSearch?: boolean;
+  rdReview?: boolean;
+  rdPredupe?: boolean;
+  rdActivity?: boolean;
+  rdEmailVerify?: boolean;
+  speederTerm?: "on" | "off";
+  geoIp?: "on" | "off";
+  duplicateIp?: "on" | "off";
+  preScreeningCaptcha?: "on" | "off";
+  survalidate?: "on" | "off";
+  dfiqPortal?: "on" | "off";
+  campaignBanner?: "hide" | "show";
+  campaignBannerStatus?: string | null;
+}) {
+  const db = await readDb();
+  const project = db.projects.find((item) => item.id === input.id);
+  if (!project) {
+    return null;
+  }
+
+  if (typeof input.name === "string" && input.name.trim()) {
+    project.name = input.name.trim();
+  }
+  if (typeof input.projectCode !== "undefined") {
+    project.project_code = input.projectCode;
+  }
+  if (typeof input.surveyName !== "undefined") {
+    project.survey_name = input.surveyName;
+  }
+  if (input.platform) {
+    project.platform = input.platform;
+  }
+  if (input.status) {
+    project.status = input.status;
+  }
+  if (input.workflowStatus) {
+    project.workflow_status = input.workflowStatus;
+  }
+  if (typeof input.sourceUrl !== "undefined") {
+    project.source_url = input.sourceUrl;
+  }
+  if (typeof input.projectType !== "undefined") {
+    project.project_type = input.projectType;
+  }
+  if (typeof input.surveyCategory !== "undefined") {
+    project.survey_category = input.surveyCategory;
+  }
+  if (typeof input.projectManager !== "undefined") {
+    project.project_manager = input.projectManager;
+  }
+  if (typeof input.secondaryProjectManager !== "undefined") {
+    project.secondary_project_manager = input.secondaryProjectManager;
+  }
+  if (typeof input.createDate !== "undefined") {
+    project.create_date = input.createDate;
+  }
+  if (typeof input.endDate !== "undefined") {
+    project.end_date = input.endDate;
+  }
+  if (typeof input.preScreening !== "undefined") {
+    project.pre_screening = input.preScreening;
+  }
+  if (typeof input.aiPreScreeningStatus !== "undefined") {
+    project.ai_pre_screening_status = input.aiPreScreeningStatus;
+  }
+  if (typeof input.numberOfQuestions !== "undefined") {
+    project.number_of_questions = input.numberOfQuestions;
+  }
+  if (typeof input.clientName !== "undefined") {
+    project.client_name = input.clientName;
+  }
+  if (typeof input.salesPerson !== "undefined") {
+    project.sales_person = input.salesPerson;
+  }
+  if (typeof input.clientPoNumber !== "undefined") {
+    project.client_po_number = input.clientPoNumber;
+  }
+  if (typeof input.variable !== "undefined") {
+    project.variable = input.variable;
+  }
+  if (typeof input.quota !== "undefined") {
+    project.quota = input.quota;
+  }
+  if (typeof input.country !== "undefined") {
+    project.country = input.country;
+  }
+  if (typeof input.ir !== "undefined") {
+    project.ir = input.ir;
+  }
+  if (typeof input.loi !== "undefined") {
+    project.loi = input.loi;
+  }
+  if (typeof input.cpi !== "undefined") {
+    project.cpi = input.cpi;
+  }
+  if (typeof input.segment !== "undefined") {
+    project.segment = input.segment;
+  }
+  if (typeof input.surveyLink !== "undefined") {
+    project.survey_link = input.surveyLink;
+  }
+  if (typeof input.supplierName !== "undefined") {
+    project.supplier_name = input.supplierName;
+  }
+  if (typeof input.supplierCpi !== "undefined") {
+    project.supplier_cpi = input.supplierCpi;
+  }
+  if (typeof input.rdSearch !== "undefined") {
+    project.rd_search = input.rdSearch;
+  }
+  if (typeof input.rdReview !== "undefined") {
+    project.rd_review = input.rdReview;
+  }
+  if (typeof input.rdPredupe !== "undefined") {
+    project.rd_predupe = input.rdPredupe;
+  }
+  if (typeof input.rdActivity !== "undefined") {
+    project.rd_activity = input.rdActivity;
+  }
+  if (typeof input.rdEmailVerify !== "undefined") {
+    project.rd_email_verify = input.rdEmailVerify;
+  }
+  if (typeof input.speederTerm !== "undefined") {
+    project.speeder_term = input.speederTerm;
+  }
+  if (typeof input.geoIp !== "undefined") {
+    project.geo_ip = input.geoIp;
+  }
+  if (typeof input.duplicateIp !== "undefined") {
+    project.duplicate_ip = input.duplicateIp;
+  }
+  if (typeof input.preScreeningCaptcha !== "undefined") {
+    project.pre_screening_captcha = input.preScreeningCaptcha;
+  }
+  if (typeof input.survalidate !== "undefined") {
+    project.survalidate = input.survalidate;
+  }
+  if (typeof input.dfiqPortal !== "undefined") {
+    project.dfiq_portal = input.dfiqPortal;
+  }
+  if (typeof input.campaignBanner !== "undefined") {
+    project.campaign_banner = input.campaignBanner;
+  }
+  if (typeof input.campaignBannerStatus !== "undefined") {
+    project.campaign_banner_status = input.campaignBannerStatus;
+  }
+  project.updated_at = new Date().toISOString();
+
+  await writeDb(db);
+  return project;
 }
 
 export async function getLocalRedirectBySlug(slug: string) {

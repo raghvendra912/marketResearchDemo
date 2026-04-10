@@ -1,0 +1,16 @@
+export type DashboardPage =
+  | "home"
+  | "project-center"
+  | "project-details"
+  | "project-create"
+  | "project-edit"
+  | "project-id-locator"
+  | "dfiq-report"
+  | "supplier-center"
+  | "client"
+  | "flamingo-tool"
+  | "settings"
+  | "end-link"
+  | "feedback"
+  | "developer-setup"
+  | "product-docs";
