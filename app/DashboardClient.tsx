@@ -14,7 +14,14 @@ type SurveyItem = {
   title: string;
 };
 
+type AppUserItem = {
+  id: string;
+  name: string;
+  role: "admin" | "pm" | "sales";
+};
+
 type ProjectTableRow = ProjectItem & {
+  internalNo: number;
   code: string;
   cc: string;
   ccPo: string;
@@ -53,7 +60,7 @@ function toDisplayPlatform(platform: ProjectItem["platform"]) {
 
 function toWorkflowLabel(status: ProjectItem["workflow_status"]) {
   if (status === "ids_awaited") {
-    return "Id's Awaited";
+    return "Id Awaited";
   }
   if (status === "pending") {
     return "Pending";
@@ -113,16 +120,14 @@ export default function DashboardClient({
   const [surveys, setSurveys] = useState<SurveyItem[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [isLoadingSurveys, setIsLoadingSurveys] = useState(true);
+  const [users, setUsers] = useState<AppUserItem[]>([]);
   const [origin, setOrigin] = useState("");
 
   const [filterClient, setFilterClient] = useState("");
-  const [filterStatus, setFilterStatus] = useState("");
+  const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
   const [filterProjectId, setFilterProjectId] = useState("");
   const [filterSearch, setFilterSearch] = useState("");
   const [filterProjectManager, setFilterProjectManager] = useState("");
-  const [filterSalesPerson, setFilterSalesPerson] = useState("");
-  const [filterFromDate, setFilterFromDate] = useState("");
-  const [filterToDate, setFilterToDate] = useState("");
 
   const [supplierProject, setSupplierProject] = useState<ProjectItem | null>(null);
   const [supplierUrl, setSupplierUrl] = useState("");
@@ -172,6 +177,7 @@ export default function DashboardClient({
 
       return {
         ...project,
+        internalNo: index + 1,
         code,
         cc: project.client_name || ["IPS", "AZK", "PDS"][index % 3],
         ccPo: project.client_po_number || `25-03494${index + 1}-01-06`,
@@ -200,83 +206,77 @@ export default function DashboardClient({
   }, [projectTableRows]);
 
   const statusOptions = useMemo(() => {
-    return Array.from(new Set(projectTableRows.map((row) => row.statusLabel))).sort();
-  }, [projectTableRows]);
-
-  const filteredRows = useMemo(() => {
-    return projectTableRows.filter((row) => {
-      if (filterClient && row.cc.toLowerCase() !== filterClient.toLowerCase()) {
-        return false;
-      }
-      if (filterStatus && row.statusLabel.toLowerCase() !== filterStatus.toLowerCase()) {
-        return false;
-      }
-      if (filterProjectManager && !row.pmLabel.toLowerCase().includes(filterProjectManager.toLowerCase())) {
-        return false;
-      }
-      if (filterSalesPerson && !(row.sales_person || "").toLowerCase().includes(filterSalesPerson.toLowerCase())) {
-        return false;
-      }
-      if (filterProjectId && !row.code.toLowerCase().includes(filterProjectId.toLowerCase())) {
-        return false;
-      }
-      if (filterFromDate) {
-        const rowDate = new Date(row.created_at);
-        const fromDate = new Date(filterFromDate);
-        fromDate.setHours(0, 0, 0, 0);
-        if (rowDate < fromDate) {
-          return false;
-        }
-      }
-      if (filterToDate) {
-        const rowDate = new Date(row.created_at);
-        const toDate = new Date(filterToDate);
-        toDate.setHours(23, 59, 59, 999);
-        if (rowDate > toDate) {
-          return false;
-        }
-      }
-      if (
-        filterSearch &&
-        !`${row.name} ${row.code} ${row.ccPo} ${row.supplierLabel}`.toLowerCase().includes(filterSearch.toLowerCase())
-      ) {
-        return false;
-      }
-      return true;
-    });
-  }, [
-    filterClient,
-    filterFromDate,
-    filterProjectId,
-    filterProjectManager,
-    filterSalesPerson,
-    filterSearch,
-    filterStatus,
-    filterToDate,
-    projectTableRows,
-  ]);
+    return ["Live", "Pending", "Paused", "Id Awaited"];
+  }, []);
 
   function resetFilters() {
     setFilterClient("");
-    setFilterStatus("");
+    setFilterStatuses([]);
     setFilterProjectId("");
     setFilterSearch("");
     setFilterProjectManager("");
-    setFilterSalesPerson("");
-    setFilterFromDate("");
-    setFilterToDate("");
+    void loadProjects({
+      client: "",
+      projectManager: "",
+      projectName: "",
+      projectCode: "",
+      statuses: [],
+    });
   }
 
-  async function loadProjects() {
+  async function loadProjects(filters?: {
+    client: string;
+    projectManager: string;
+    projectName: string;
+    projectCode: string;
+    statuses: string[];
+  }) {
     setIsLoadingProjects(true);
     try {
-      const res = await fetch("/api/projects", { cache: "no-store" });
+      const params = new URLSearchParams();
+      const nextFilters = filters ?? {
+        client: filterClient,
+        projectManager: filterProjectManager,
+        projectName: filterSearch,
+        projectCode: filterProjectId,
+        statuses: filterStatuses.map((status) => mapStatusToApi(status)),
+      };
+      if (nextFilters.client) {
+        params.set("client", nextFilters.client);
+      }
+      if (nextFilters.projectManager) {
+        params.set("projectManager", nextFilters.projectManager);
+      }
+      if (nextFilters.projectName) {
+        params.set("projectName", nextFilters.projectName);
+      }
+      if (nextFilters.projectCode) {
+        params.set("projectCode", nextFilters.projectCode);
+      }
+      if (nextFilters.statuses.length > 0) {
+        params.set("statuses", nextFilters.statuses.join(","));
+      }
+
+      const url = params.toString() ? `/api/projects?${params.toString()}` : "/api/projects";
+      const res = await fetch(url, { cache: "no-store" });
       const body = await res.json();
       if (res.ok) {
         setProjects((body.projects ?? []) as ProjectItem[]);
       }
     } finally {
       setIsLoadingProjects(false);
+    }
+  }
+
+  async function loadUsers() {
+    try {
+      const res = await fetch("/api/auth/users", { cache: "no-store" });
+      const body = await res.json();
+      if (res.ok) {
+        setUsers((body.users ?? []) as AppUserItem[]);
+      }
+    } catch {
+      setUsers([]);
     }
   }
 
@@ -297,6 +297,7 @@ export default function DashboardClient({
     setOrigin(window.location.origin);
     void loadProjects();
     void loadSurveys();
+    void loadUsers();
   }, []);
 
   function openSupplierModal(project: ProjectItem) {
@@ -407,6 +408,26 @@ export default function DashboardClient({
     }
   }
 
+  function onSearch() {
+    void loadProjects({
+      client: filterClient,
+      projectManager: filterProjectManager,
+      projectName: filterSearch,
+      projectCode: filterProjectId,
+      statuses: filterStatuses.map((status) => mapStatusToApi(status)),
+    });
+  }
+
+  const pmUsers = useMemo(() => users.filter((user) => user.role === "pm"), [users]);
+
+  function mapStatusToApi(status: string) {
+    const key = status.toLowerCase();
+    if (key === "id's awaited" || key === "id awaited") {
+      return "ids_awaited";
+    }
+    return key;
+  }
+
   return (
     <main className="min-h-screen bg-[#eef3f8] text-slate-900">
       <OpsHeader currentUser={currentUser} activePage={activePage} />
@@ -416,52 +437,44 @@ export default function DashboardClient({
           <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <div className="grid gap-3 md:grid-cols-6">
               <input
-                type="date"
                 className="rounded border border-slate-300 px-3 py-2 text-sm"
-                value={filterFromDate}
-                onChange={(e) => setFilterFromDate(e.target.value)}
-              />
-              <input
-                type="date"
-                className="rounded border border-slate-300 px-3 py-2 text-sm"
-                value={filterToDate}
-                onChange={(e) => setFilterToDate(e.target.value)}
-              />
-              <select className="rounded border border-slate-300 px-3 py-2 text-sm">
-                <option>Search By Create Date</option>
-              </select>
-              <input
-                className="rounded border border-slate-300 px-3 py-2 text-sm"
-                placeholder="Project Manager"
-                value={filterProjectManager}
-                onChange={(e) => setFilterProjectManager(e.target.value)}
+                placeholder="Project Name"
+                value={filterSearch}
+                onChange={(e) => setFilterSearch(e.target.value)}
               />
               <select
                 className="rounded border border-slate-300 px-3 py-2 text-sm"
-                value={filterSalesPerson}
-                onChange={(e) => setFilterSalesPerson(e.target.value)}
+                value={filterProjectManager}
+                onChange={(e) => setFilterProjectManager(e.target.value)}
               >
-                <option value="">-Sales Person-</option>
-                <option>AR</option>
-                <option>AY</option>
-                <option>AM/HP</option>
+                <option value="">Project Manager</option>
+                {pmUsers.map((user) => (
+                  <option key={user.id} value={user.name}>
+                    {user.name}
+                  </option>
+                ))}
               </select>
-              <div className="flex gap-2">
-                <button className="rounded bg-blue-800 px-3 py-2 text-sm font-semibold text-white" title="Search" type="button">
-                  Search
-                </button>
-                <button className="rounded bg-blue-800 px-3 py-2 text-sm font-semibold text-white" title="Download" type="button">
-                  Export
-                </button>
-                <button className="rounded bg-blue-800 px-3 py-2 text-sm font-semibold text-white" title="Finance" type="button">
-                  $
-                </button>
-                <button className="rounded bg-blue-800 px-3 py-2 text-sm font-semibold text-white" title="Refresh" type="button" onClick={resetFilters}>
-                  Reset
-                </button>
-              </div>
-            </div>
-            <div className="mt-3 grid gap-3 md:grid-cols-6">
+              <select
+                className="rounded border border-slate-300 px-3 py-2 text-sm"
+                multiple
+                value={filterStatuses}
+                onChange={(e) => {
+                  const values = Array.from(e.target.selectedOptions).map((option) => option.value);
+                  setFilterStatuses(values);
+                }}
+              >
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+              <input
+                className="rounded border border-slate-300 px-3 py-2 text-sm"
+                placeholder="Project Id (Internal)"
+                value={filterProjectId}
+                onChange={(e) => setFilterProjectId(e.target.value)}
+              />
               <select
                 className="rounded border border-slate-300 px-3 py-2 text-sm"
                 value={filterClient}
@@ -474,30 +487,20 @@ export default function DashboardClient({
                   </option>
                 ))}
               </select>
-              <select
-                className="rounded border border-slate-300 px-3 py-2 text-sm"
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-              >
-                <option value="">Project Status</option>
-                {statusOptions.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="rounded border border-slate-300 px-3 py-2 text-sm"
-                placeholder="Project Id"
-                value={filterProjectId}
-                onChange={(e) => setFilterProjectId(e.target.value)}
-              />
-              <input
-                className="rounded border border-slate-300 px-3 py-2 text-sm md:col-span-2"
-                placeholder="Project Name"
-                value={filterSearch}
-                onChange={(e) => setFilterSearch(e.target.value)}
-              />
+              <div className="flex gap-2">
+                <button className="rounded bg-blue-800 px-3 py-2 text-sm font-semibold text-white" title="Search" type="button" onClick={onSearch}>
+                  Search
+                </button>
+                <button className="rounded bg-blue-800 px-3 py-2 text-sm font-semibold text-white" title="Download" type="button">
+                  Export
+                </button>
+                <button className="rounded bg-blue-800 px-3 py-2 text-sm font-semibold text-white" title="Finance" type="button">
+                  $
+                </button>
+                <button className="rounded bg-blue-800 px-3 py-2 text-sm font-semibold text-white" title="Refresh" type="button" onClick={resetFilters}>
+                  Reset
+                </button>
+              </div>
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -571,14 +574,14 @@ export default function DashboardClient({
                       Loading projects...
                     </td>
                   </tr>
-                ) : filteredRows.length === 0 ? (
+                ) : projectTableRows.length === 0 ? (
                   <tr>
                     <td className="px-3 py-4" colSpan={20}>
                       No projects yet. Create one from Project Center - Create Project.
                     </td>
                   </tr>
                 ) : (
-                  filteredRows.map((row) => (
+                  projectTableRows.map((row) => (
                     <tr key={row.id} className="border-t border-slate-100">
                       <td className="px-3 py-3 font-semibold">
                         <button onClick={() => setSupplierListProject(row)} className="text-left text-blue-700 underline" title="View Supplier List" type="button">

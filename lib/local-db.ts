@@ -121,6 +121,7 @@ type FeedbackStatus = "open" | "planned" | "in_progress" | "done";
 type LocalFeedbackItem = {
   id: string;
   page: string;
+  feature_position: string | null;
   feature_title: string;
   current_behavior: string;
   expected_behavior: string;
@@ -369,6 +370,7 @@ async function readDb(): Promise<LocalDb> {
     const parsed = JSON.parse(content) as Partial<LocalDb>;
     const feedbackItems = (parsed.feedback_items ?? []).map((item) => ({
       ...item,
+      feature_position: item.feature_position ?? null,
       agent_requested: item.agent_requested ?? false,
       agent_request_note: item.agent_request_note ?? null,
       agent_approved: item.agent_approved ?? false,
@@ -420,6 +422,7 @@ function mapFeedbackRow(row: Record<string, unknown>): LocalFeedbackItem {
   return {
     id: String(row.id ?? ""),
     page: String(row.page ?? ""),
+    feature_position: (row.feature_position as string | null) ?? null,
     feature_title: String(row.feature_title ?? ""),
     current_behavior: String(row.current_behavior ?? ""),
     expected_behavior: String(row.expected_behavior ?? ""),
@@ -965,6 +968,7 @@ export async function listLocalFeedback() {
 
 export async function createLocalFeedback(input: {
   page: string;
+  featurePosition: string | null;
   featureTitle: string;
   currentBehavior: string;
   expectedBehavior: string;
@@ -978,6 +982,7 @@ export async function createLocalFeedback(input: {
   const now = new Date().toISOString();
   const row = {
     page: input.page,
+    feature_position: input.featurePosition,
     feature_title: input.featureTitle,
     current_behavior: input.currentBehavior,
     expected_behavior: input.expectedBehavior,
@@ -999,11 +1004,21 @@ export async function createLocalFeedback(input: {
     updated_at: now,
   };
 
-  const { data, error } = await supabaseAdmin.from("feedback_items").insert(row).select("*").single();
-  if (error || !data) {
-    throw new Error(`Failed to insert feedback_items into Supabase: ${error?.message ?? "unknown error"}`);
+  const firstAttempt = await supabaseAdmin.from("feedback_items").insert(row).select("*").single();
+  if (!firstAttempt.error && firstAttempt.data) {
+    return mapFeedbackRow(firstAttempt.data as unknown as Record<string, unknown>);
   }
-  return mapFeedbackRow(data as unknown as Record<string, unknown>);
+
+  if (firstAttempt.error?.message.toLowerCase().includes("feature_position")) {
+    const { feature_position: _featurePosition, ...legacyRow } = row;
+    const retry = await supabaseAdmin.from("feedback_items").insert(legacyRow).select("*").single();
+    if (!retry.error && retry.data) {
+      return mapFeedbackRow(retry.data as unknown as Record<string, unknown>);
+    }
+    throw new Error(`Failed to insert feedback_items into Supabase: ${retry.error?.message ?? "unknown error"}`);
+  }
+
+  throw new Error(`Failed to insert feedback_items into Supabase: ${firstAttempt.error?.message ?? "unknown error"}`);
 }
 
 export async function requestFeedbackAgent(input: { id: string; requestNote: string | null }) {

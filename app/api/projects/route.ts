@@ -292,20 +292,65 @@ async function createUniqueSlug(supabaseAdmin: ReturnType<typeof getSupabaseAdmi
   throw new Error("Could not generate unique slug.");
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const query = request.nextUrl.searchParams;
+  const client = sanitizeText(query.get("client") ?? "", 120);
+  const projectManager = sanitizeText(query.get("projectManager") ?? "", 120);
+  const projectName = sanitizeText(query.get("projectName") ?? "", 180);
+  const projectCode = sanitizeText(query.get("projectCode") ?? "", 60);
+  const statusesRaw = sanitizeText(query.get("statuses") ?? "", 200);
+  const statuses = statusesRaw
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter((value): value is WorkflowStatus => workflowStatuses.has(value as WorkflowStatus));
+
   if (!hasSupabaseConfig()) {
     const projects = await getLocalProjects();
-    return NextResponse.json({ projects });
+    const filtered = projects.filter((project) => {
+      if (client && (project.client_name ?? "").toLowerCase() !== client.toLowerCase()) {
+        return false;
+      }
+      if (projectManager && !(project.project_manager ?? "").toLowerCase().includes(projectManager.toLowerCase())) {
+        return false;
+      }
+      if (projectName && !(project.name ?? "").toLowerCase().includes(projectName.toLowerCase())) {
+        return false;
+      }
+      if (projectCode && !(project.project_code ?? "").toLowerCase().includes(projectCode.toLowerCase())) {
+        return false;
+      }
+      if (statuses.length > 0 && !statuses.includes(project.workflow_status)) {
+        return false;
+      }
+      return true;
+    });
+    return NextResponse.json({ projects: filtered });
   }
 
   const supabaseAdmin = getSupabaseAdmin();
-
-  const { data, error } = await supabaseAdmin
+  let requestBuilder = supabaseAdmin
     .from("projects")
     .select("*, project_links(slug, is_active)")
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(300);
 
+  if (client) {
+    requestBuilder = requestBuilder.eq("client_name", client);
+  }
+  if (projectManager) {
+    requestBuilder = requestBuilder.ilike("project_manager", `%${projectManager}%`);
+  }
+  if (projectName) {
+    requestBuilder = requestBuilder.ilike("name", `%${projectName}%`);
+  }
+  if (projectCode) {
+    requestBuilder = requestBuilder.ilike("project_code", `%${projectCode}%`);
+  }
+  if (statuses.length > 0) {
+    requestBuilder = requestBuilder.in("workflow_status", statuses);
+  }
+
+  const { data, error } = await requestBuilder;
   if (error) {
     return NextResponse.json({ error: "Failed to load projects." }, { status: 500 });
   }

@@ -6,25 +6,15 @@ import type { SessionUser } from "@/lib/auth";
 type FeedbackItem = {
   id: string;
   page: string;
+  feature_position: string | null;
   feature_title: string;
   current_behavior: string;
   expected_behavior: string;
   impact: string;
   status: "open" | "planned" | "in_progress" | "done";
   created_by_name: string;
-  created_by_email: string;
-  created_by_role: string;
   developer_note: string | null;
-  updated_by_name: string | null;
   created_at: string;
-  updated_at: string;
-  agent_requested: boolean;
-  agent_request_note: string | null;
-  agent_approved: boolean;
-  agent_approval_comment: string | null;
-  agent_approved_by_name: string | null;
-  agent_run_status: "idle" | "queued" | "running" | "done" | "failed";
-  agent_run_log: string | null;
 };
 
 const statuses: Array<FeedbackItem["status"]> = ["open", "planned", "in_progress", "done"];
@@ -36,6 +26,7 @@ export default function FeedbackBoard({ currentUser, currentPage }: { currentUse
   const [loading, setLoading] = useState(true);
 
   const [page, setPage] = useState(currentPage);
+  const [featurePosition, setFeaturePosition] = useState("");
   const [featureTitle, setFeatureTitle] = useState("");
   const [currentBehavior, setCurrentBehavior] = useState("");
   const [expectedBehavior, setExpectedBehavior] = useState("");
@@ -43,8 +34,6 @@ export default function FeedbackBoard({ currentUser, currentPage }: { currentUse
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [agentNoteById, setAgentNoteById] = useState<Record<string, string>>({});
-  const [approvalById, setApprovalById] = useState<Record<string, string>>({});
 
   async function loadFeedback() {
     setLoading(true);
@@ -73,7 +62,7 @@ export default function FeedbackBoard({ currentUser, currentPage }: { currentUse
     const res = await fetch("/api/feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ page, featureTitle, currentBehavior, expectedBehavior, impact }),
+      body: JSON.stringify({ page, featurePosition, featureTitle, currentBehavior, expectedBehavior, impact }),
     });
     try {
       const body = await res.json().catch(() => ({}));
@@ -87,11 +76,12 @@ export default function FeedbackBoard({ currentUser, currentPage }: { currentUse
         setItems((prev) => [body.item as FeedbackItem, ...prev]);
       }
 
+      setFeaturePosition("");
       setFeatureTitle("");
       setCurrentBehavior("");
       setExpectedBehavior("");
       setImpact("");
-      setSuccess("Feedback submitted and shared with the team.");
+      setSuccess("Feedback submitted.");
     } catch {
       setError("Failed to submit feedback.");
     }
@@ -109,40 +99,23 @@ export default function FeedbackBoard({ currentUser, currentPage }: { currentUse
     }
   }
 
-  async function requestAgentChange(id: string) {
-    await fetch(`/api/feedback/${id}/request-agent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ requestNote: agentNoteById[id] ?? "" }),
-    });
-    await loadFeedback();
-  }
-
-  async function approveAgentChange(id: string) {
-    await fetch(`/api/feedback/${id}/approve-agent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ approvalComment: approvalById[id] ?? "" }),
-    });
-    await loadFeedback();
-  }
-
-  async function runAgentNow(id: string) {
-    await fetch(`/api/feedback/${id}/run-agent`, { method: "POST" });
-    await loadFeedback();
-  }
-
   return (
     <section className="mt-4 grid gap-4 lg:grid-cols-2">
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="text-lg font-semibold">Feature Feedback</h2>
-        <p className="mt-1 text-xs text-slate-500">Describe how this feature should work. Everyone can view this board.</p>
+        <p className="mt-1 text-xs text-slate-500">Simple shared feedback form for incremental changes.</p>
 
         <form onSubmit={submitFeedback} className="mt-3 grid gap-3">
           <input
             value={page}
             onChange={(e) => setPage(e.target.value)}
             placeholder="Page (example: project-details)"
+            className="rounded border border-slate-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={featurePosition}
+            onChange={(e) => setFeaturePosition(e.target.value)}
+            placeholder="Feature position (example: table action column)"
             className="rounded border border-slate-300 px-3 py-2 text-sm"
           />
           <input
@@ -196,39 +169,15 @@ export default function FeedbackBoard({ currentUser, currentPage }: { currentUse
               </div>
 
               <p className="mt-2 text-sm font-semibold text-slate-900">{item.feature_title}</p>
+              {item.feature_position ? (
+                <p className="mt-1 text-xs text-slate-600">
+                  <span className="font-semibold">Position:</span> {item.feature_position}
+                </p>
+              ) : null}
               <p className="mt-1 text-xs text-slate-600"><span className="font-semibold">Current:</span> {item.current_behavior}</p>
               <p className="mt-1 text-xs text-slate-600"><span className="font-semibold">Expected:</span> {item.expected_behavior}</p>
               {item.impact ? <p className="mt-1 text-xs text-slate-600"><span className="font-semibold">Impact:</span> {item.impact}</p> : null}
-              <p className="mt-1 text-xs text-slate-500">
-                By {item.created_by_name} ({item.created_by_role})
-              </p>
-              <p className="mt-1 text-xs text-slate-500">Email: {item.created_by_email}</p>
-              <p className="mt-1 text-xs text-slate-500">
-                Agent: {item.agent_run_status}
-                {item.agent_run_log ? ` | ${item.agent_run_log}` : ""}
-              </p>
-
-              {!item.agent_requested ? (
-                <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2">
-                  <textarea
-                    rows={2}
-                    value={agentNoteById[item.id] ?? ""}
-                    onChange={(e) => setAgentNoteById((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                    className="w-full rounded border border-slate-300 px-2 py-1 text-xs"
-                    placeholder="Request note for agent (optional)"
-                  />
-                  <button
-                    className="mt-2 rounded bg-blue-700 px-2 py-1 text-xs font-semibold text-white"
-                    onClick={() => void requestAgentChange(item.id)}
-                  >
-                    Request Agent Change
-                  </button>
-                </div>
-              ) : (
-                <p className="mt-2 text-xs text-blue-700">
-                  Agent request submitted{item.agent_request_note ? `: ${item.agent_request_note}` : "."}
-                </p>
-              )}
+              <p className="mt-1 text-xs text-slate-500">Submitted by: {item.created_by_name}</p>
 
               {canModerate ? (
                 <div className="mt-3 grid gap-2 rounded border border-slate-200 bg-slate-50 p-2">
@@ -252,38 +201,6 @@ export default function FeedbackBoard({ currentUser, currentPage }: { currentUse
                       void updateFeedback(item.id, item.status, e.target.value);
                     }}
                   />
-
-                  {!item.agent_approved ? (
-                    <>
-                      <textarea
-                        value={approvalById[item.id] ?? ""}
-                        onChange={(e) => setApprovalById((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                        rows={2}
-                        className="rounded border border-slate-300 px-2 py-1 text-xs"
-                        placeholder="Admin approval comment for agent"
-                      />
-                      <button
-                        onClick={() => void approveAgentChange(item.id)}
-                        className="w-fit rounded bg-emerald-700 px-2 py-1 text-xs font-semibold text-white"
-                      >
-                        Approve Agent Run
-                      </button>
-                    </>
-                  ) : (
-                    <p className="text-xs text-emerald-700">
-                      Approved by {item.agent_approved_by_name}
-                      {item.agent_approval_comment ? `: ${item.agent_approval_comment}` : ""}
-                    </p>
-                  )}
-
-                  {item.agent_approved ? (
-                    <button
-                      onClick={() => void runAgentNow(item.id)}
-                      className="w-fit rounded bg-violet-700 px-2 py-1 text-xs font-semibold text-white"
-                    >
-                      Run Agent Now
-                    </button>
-                  ) : null}
                 </div>
               ) : item.developer_note ? (
                 <p className="mt-2 rounded bg-slate-50 px-2 py-1 text-xs text-slate-700">

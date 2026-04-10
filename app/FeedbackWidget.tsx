@@ -17,6 +17,7 @@ export default function FeedbackWidget() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [comment, setComment] = useState("");
+  const [featurePosition, setFeaturePosition] = useState("");
   const [items, setItems] = useState<FeedbackItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export default function FeedbackWidget() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         page: pathname || "/",
+        featurePosition,
         comment: trimmed,
       }),
     });
@@ -84,6 +86,7 @@ export default function FeedbackWidget() {
         setItems((prev) => [body.item as FeedbackItem, ...prev].slice(0, 8));
       }
       setComment("");
+      setFeaturePosition("");
       setNotice("Feedback shared.");
     } catch {
       setError("Could not submit feedback.");
@@ -111,6 +114,12 @@ export default function FeedbackWidget() {
               rows={3}
               placeholder="Describe how this feature should work..."
               className="w-full rounded border border-slate-300 px-2 py-2 text-sm outline-none focus:border-blue-700"
+            />
+            <input
+              value={featurePosition}
+              onChange={(e) => setFeaturePosition(e.target.value)}
+              placeholder="Position (optional) e.g. header right, table action"
+              className="mt-2 w-full rounded border border-slate-300 px-2 py-2 text-sm outline-none focus:border-blue-700"
             />
             <div className="mt-2 flex items-center justify-between">
               <p className="text-[11px] text-slate-500">Page: {pathname}</p>

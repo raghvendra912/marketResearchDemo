@@ -5,6 +5,7 @@ import { sanitizeText } from "@/lib/sanitize";
 
 type Payload = {
   page?: string;
+  featurePosition?: string;
   featureTitle?: string;
   currentBehavior?: string;
   expectedBehavior?: string;
@@ -41,6 +42,7 @@ export async function POST(request: NextRequest) {
   }
 
   const page = sanitizeText(String(payload.page ?? ""), 120);
+  const featurePosition = sanitizeText(String(payload.featurePosition ?? ""), 160) || null;
   const comment = sanitizeText(String(payload.comment ?? ""), 2000);
   const featureTitle = sanitizeText(String(payload.featureTitle ?? ""), 180) || "General Feedback";
   const currentBehavior = sanitizeText(String(payload.currentBehavior ?? ""), 2000) || comment;
@@ -57,6 +59,7 @@ export async function POST(request: NextRequest) {
   try {
     const created = await createLocalFeedback({
       page,
+      featurePosition,
       featureTitle,
       currentBehavior,
       expectedBehavior,
