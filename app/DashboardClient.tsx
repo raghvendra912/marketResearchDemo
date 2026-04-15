@@ -16,6 +16,7 @@ import ClientCenter from "@/components/ClientCenter";
 import EndLinkManager from "@/components/EndLinkManager";
 import SystemSettings from "@/components/SystemSettings";
 import FlamingoTool from "@/components/FlamingoTool";
+import DeveloperSetup from "@/components/DeveloperSetup";
 
 type SurveyItem = {
   id: string;
@@ -542,22 +543,12 @@ export default function DashboardClient({
             {activePage === "end-link" && <EndLinkManager />}
             {activePage === "settings" && <SystemSettings />}
             {activePage === "flamingo-tool" && <FlamingoTool />}
+            {activePage === "developer-setup" && <DeveloperSetup />}
             
             {activePage === "product-docs" && (
               <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
                 <h2 className="text-xl font-semibold text-slate-900">Product Documentation</h2>
                 <p className="mt-2 text-sm text-slate-600">Product guides and component documentation.</p>
-              </section>
-            )}
-            
-            {activePage === "developer-setup" && (
-              <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="text-xl font-semibold text-slate-900">Developer Setup</h2>
-                <div className="mt-4 rounded border border-slate-200 bg-slate-50 p-3 text-sm">
-                  <p className="font-semibold">Developer Setup Quick Start</p>
-                  <p className="mt-1">1) Clone repo 2) npm install 3) npm run dev 4) Prompt agent for changes 5) push to GitHub and Vercel auto-deploys.</p>
-                  <Link href="/product-docs" className="mt-3 inline-flex rounded bg-blue-700 px-3 py-2 text-sm font-semibold text-white">Open Product Docs</Link>
-                </div>
               </section>
             )}
           </div>
