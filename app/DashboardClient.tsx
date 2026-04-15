@@ -3,11 +3,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, Download, DollarSign, RefreshCw, Plus, Link as LinkIcon, UserPlus, Settings, PieChart } from "lucide-react";
 import type { ProjectItem } from "@/types/project";
 import type { SessionUser } from "@/lib/auth";
 import type { DashboardPage } from "@/types/navigation";
 import FeedbackBoard from "./FeedbackBoard";
 import OpsHeader from "./OpsHeader";
+import DashboardCharts from "@/components/DashboardCharts";
 
 type SurveyItem = {
   id: string;
@@ -429,19 +432,28 @@ export default function DashboardClient({
   }
 
   return (
-    <main className="min-h-screen bg-[#eef3f8] text-slate-900">
+    <main className="min-h-screen bg-slate-50/50 text-slate-900 selection:bg-blue-100 selection:text-blue-900 flex flex-col">
       <OpsHeader currentUser={currentUser} activePage={activePage} />
 
-      <div className="mx-auto max-w-[1400px] px-4 py-5">
+      <div className="mx-auto max-w-[1400px] px-4 py-5 font-sans">
         {showProjectDashboard ? (
-          <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <>
+            <DashboardCharts />
+            <motion.section 
+              initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-xl border border-slate-200/60 bg-white/80 backdrop-blur-lg p-5 shadow-sm"
+          >
             <div className="grid gap-3 md:grid-cols-6">
-              <input
-                className="rounded border border-slate-300 px-3 py-2 text-sm"
-                placeholder="Project Name"
-                value={filterSearch}
-                onChange={(e) => setFilterSearch(e.target.value)}
-              />
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  className="w-full rounded-md border border-slate-200 bg-white/50 pl-9 pr-3 py-2 text-sm transition-all focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 outline-none"
+                  placeholder="Project Name"
+                  value={filterSearch}
+                  onChange={(e) => setFilterSearch(e.target.value)}
+                />
+              </div>
               <select
                 className="rounded border border-slate-300 px-3 py-2 text-sm"
                 value={filterProjectManager}
@@ -516,7 +528,8 @@ export default function DashboardClient({
                 Surveys: {isLoadingSurveys ? "..." : surveys.length} | Projects: {projects.length} | Links: {totalLinks}
               </p>
             </div>
-          </section>
+          </motion.section>
+          </>
         ) : (
           <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
             <h2 className="text-xl font-semibold text-slate-900">
@@ -541,9 +554,14 @@ export default function DashboardClient({
         )}
 
         {showProjectDashboard ? (
-          <section className="mt-4 overflow-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-            <table className="min-w-[1250px] text-sm">
-              <thead className="bg-slate-100 text-left text-xs uppercase tracking-wide text-slate-700">
+          <motion.section 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mt-5 overflow-auto rounded-xl border border-slate-200/60 bg-white shadow-sm"
+          >
+            <table className="min-w-[1250px] text-sm w-full divide-y divide-slate-200">
+              <thead className="bg-slate-50/80 backdrop-blur-sm text-left text-xs uppercase tracking-wider text-slate-500 font-medium">
                 <tr>
                   <th className="px-3 py-3">Project Id</th>
                   <th className="px-3 py-3">Project Name</th>
@@ -632,13 +650,20 @@ export default function DashboardClient({
                 )}
               </tbody>
             </table>
-          </section>
+          </motion.section>
         ) : null}
 
         {activePage === "feedback" ? <FeedbackBoard currentUser={currentUser} currentPage={activePage} /> : null}
-        {supplierListProject ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-            <div className="w-full max-w-2xl rounded-lg bg-white p-4 shadow-xl">
+        <AnimatePresence>
+          {supplierListProject ? (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/10 backdrop-blur-md px-4"
+            >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                className="w-full max-w-2xl rounded-xl bg-white p-5 shadow-2xl ring-1 ring-slate-200/50"
+              >
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-semibold">Supplier List</h3>
                 <button className="text-sm text-slate-500" onClick={() => setSupplierListProject(null)} type="button">Close</button>
@@ -674,13 +699,21 @@ export default function DashboardClient({
                   </tbody>
                 </table>
               </div>
-            </div>
-          </div>
-        ) : null}
+              </motion.div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
-        {supplierProject ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-            <div className="w-full max-w-lg rounded-lg bg-white p-4 shadow-xl">
+        <AnimatePresence>
+          {supplierProject ? (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/10 backdrop-blur-md px-4"
+            >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                className="w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl ring-1 ring-slate-200/50"
+              >
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-semibold">Supplier Link</h3>
                 <button className="text-sm text-slate-500" onClick={() => setSupplierProject(null)} type="button">Close</button>
@@ -723,13 +756,21 @@ export default function DashboardClient({
                   {supplierSaving ? "Saving..." : "Save Supplier"}
                 </button>
               </div>
-            </div>
-          </div>
-        ) : null}
+              </motion.div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
-        {assignProject ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-            <div className="w-full max-w-lg rounded-lg bg-white p-4 shadow-xl">
+        <AnimatePresence>
+          {assignProject ? (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/10 backdrop-blur-md px-4"
+            >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                className="w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl ring-1 ring-slate-200/50"
+              >
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-semibold">Assign Team</h3>
                 <button className="text-sm text-slate-500" onClick={() => setAssignProject(null)} type="button">Close</button>
@@ -745,13 +786,21 @@ export default function DashboardClient({
                   {assignSaving ? "Saving..." : "Save"}
                 </button>
               </div>
-            </div>
-          </div>
-        ) : null}
+              </motion.div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
-        {pricingProject ? (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4">
-            <div className="w-full max-w-lg rounded-lg bg-white p-4 shadow-xl">
+        <AnimatePresence>
+          {pricingProject ? (
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/10 backdrop-blur-md px-4"
+            >
+              <motion.div 
+                initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+                className="w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl ring-1 ring-slate-200/50"
+              >
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-semibold">CPI Settings</h3>
                 <button className="text-sm text-slate-500" onClick={() => setPricingProject(null)} type="button">Close</button>
@@ -767,9 +816,10 @@ export default function DashboardClient({
                   {pricingSaving ? "Saving..." : "Save"}
                 </button>
               </div>
-            </div>
-          </div>
-        ) : null}
+              </motion.div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
     </main>
   );
