@@ -17,6 +17,7 @@ import EndLinkManager from "@/components/EndLinkManager";
 import SystemSettings from "@/components/SystemSettings";
 import FlamingoTool from "@/components/FlamingoTool";
 import DeveloperSetup from "@/components/DeveloperSetup";
+import ProductDocs from "@/components/ProductDocs";
 
 type SurveyItem = {
   id: string;
@@ -544,13 +545,7 @@ export default function DashboardClient({
             {activePage === "settings" && <SystemSettings />}
             {activePage === "flamingo-tool" && <FlamingoTool />}
             {activePage === "developer-setup" && <DeveloperSetup />}
-            
-            {activePage === "product-docs" && (
-              <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 className="text-xl font-semibold text-slate-900">Product Documentation</h2>
-                <p className="mt-2 text-sm text-slate-600">Product guides and component documentation.</p>
-              </section>
-            )}
+            {activePage === "product-docs" && <ProductDocs />}
           </div>
         )}
 
