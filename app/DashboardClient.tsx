@@ -11,6 +11,11 @@ import type { DashboardPage } from "@/types/navigation";
 import FeedbackBoard from "./FeedbackBoard";
 import OpsHeader from "./OpsHeader";
 import DashboardCharts from "@/components/DashboardCharts";
+import SupplierCenter from "@/components/SupplierCenter";
+import ClientCenter from "@/components/ClientCenter";
+import EndLinkManager from "@/components/EndLinkManager";
+import SystemSettings from "@/components/SystemSettings";
+import FlamingoTool from "@/components/FlamingoTool";
 
 type SurveyItem = {
   id: string;
@@ -531,26 +536,31 @@ export default function DashboardClient({
           </motion.section>
           </>
         ) : (
-          <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-            <h2 className="text-xl font-semibold text-slate-900">
-              {activePage === "supplier-center" ? "Supplier Center" : null}
-              {activePage === "client" ? "Client" : null}
-              {activePage === "flamingo-tool" ? "Flamingo Tool" : null}
-              {activePage === "settings" ? "Settings" : null}
-              {activePage === "end-link" ? "End Link" : null}
-              {activePage === "feedback" ? "Feedback Hub" : null}
-              {activePage === "developer-setup" ? "Developer Setup" : null}
-              {activePage === "product-docs" ? "Product Documentation" : null}
-            </h2>
-            <p className="mt-2 text-sm text-slate-600">This module route is active. We can now add detailed workflow blocks for this section.</p>
-            {activePage === "developer-setup" ? (
-              <div className="mt-4 rounded border border-slate-200 bg-slate-50 p-3 text-sm">
-                <p className="font-semibold">Developer Setup Quick Start</p>
-                <p className="mt-1">1) Clone repo 2) npm install 3) npm run dev 4) Prompt agent for changes 5) push to GitHub and Vercel auto-deploys.</p>
-                <Link href="/product-docs" className="mt-3 inline-flex rounded bg-blue-700 px-3 py-2 text-sm font-semibold text-white">Open Product Docs</Link>
-              </div>
-            ) : null}
-          </section>
+          <div className="pt-2">
+            {activePage === "supplier-center" && <SupplierCenter />}
+            {activePage === "client" && <ClientCenter />}
+            {activePage === "end-link" && <EndLinkManager />}
+            {activePage === "settings" && <SystemSettings />}
+            {activePage === "flamingo-tool" && <FlamingoTool />}
+            
+            {activePage === "product-docs" && (
+              <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-semibold text-slate-900">Product Documentation</h2>
+                <p className="mt-2 text-sm text-slate-600">Product guides and component documentation.</p>
+              </section>
+            )}
+            
+            {activePage === "developer-setup" && (
+              <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 className="text-xl font-semibold text-slate-900">Developer Setup</h2>
+                <div className="mt-4 rounded border border-slate-200 bg-slate-50 p-3 text-sm">
+                  <p className="font-semibold">Developer Setup Quick Start</p>
+                  <p className="mt-1">1) Clone repo 2) npm install 3) npm run dev 4) Prompt agent for changes 5) push to GitHub and Vercel auto-deploys.</p>
+                  <Link href="/product-docs" className="mt-3 inline-flex rounded bg-blue-700 px-3 py-2 text-sm font-semibold text-white">Open Product Docs</Link>
+                </div>
+              </section>
+            )}
+          </div>
         )}
 
         {showProjectDashboard ? (
