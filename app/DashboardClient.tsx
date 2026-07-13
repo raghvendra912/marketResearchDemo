@@ -169,7 +169,13 @@ export default function DashboardClient({
   );
 
   const projectTableRows = useMemo<ProjectTableRow[]>(() => {
-    return projects.map((project, index) => {
+    const sortedProjects = [...projects].sort((a, b) => {
+      const dateA = new Date(a.created_at || 0).getTime();
+      const dateB = new Date(b.created_at || 0).getTime();
+      return dateB - dateA;
+    });
+
+    return sortedProjects.map((project, index) => {
       const createdDate = new Date(project.created_at);
       const code = project.project_code ?? `QLB-${String(index + 1).padStart(4, "0")}${createdDate.getFullYear()}`;
       const st = Number(project.quota ?? 20 + index * 3);
@@ -445,7 +451,7 @@ export default function DashboardClient({
       <div className="mx-auto max-w-[1400px] px-4 py-5 font-sans">
         {showProjectDashboard ? (
           <>
-            <DashboardCharts />
+            {activePage !== "home" && <DashboardCharts />}
             <motion.section 
               initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
